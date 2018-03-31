@@ -1,4 +1,5 @@
-#PULLING HISTORICAL GDAX DATA
+#Script to pull historical data from GDAX and saved as CSV file.
+#Dates have to be input using timestamps (ISO 8601)
 #This uses a third party library from https://github.com/danpaquin/gdax-python
 import time
 import sys
