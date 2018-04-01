@@ -6,7 +6,7 @@ import csv
 import tzlocal
 
 def main(argv1,argv2,argv3):
-    period = 0.34 #helps with sleep time for debugging
+    period = 0.34 #helps with not exceeding requests per second
     #create a a new file where pulled data will be saved
     file_handler = open('Historical_eth-usd_data.txt', 'w')
     #writes a specific header in which data is pulled from the web
