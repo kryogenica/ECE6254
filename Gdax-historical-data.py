@@ -1,4 +1,5 @@
 #PULLING HISTORICAL GDAX DATA
+#Uses library from https://github.com/danpaquin/gdax-python
 import time
 import datetime
 import gdax
@@ -9,7 +10,7 @@ def main(argv1,argv2,argv3):
     period = 0.34 #helps with not exceeding requests per second
     #create a a new file where pulled data will be saved
     file_handler = open('Historical_eth-usd_data.txt', 'w')
-    #writes a specific header in which data is pulled from the web
+    #writes a specific header in the order in which data is pulled from the web
     file_handler.write("time,low,high,open,close,volume\n")
     #We throttle public endpoints by IP: 3 requests per second
     #Up to 6 requests per second in bursts
@@ -38,7 +39,7 @@ def main(argv1,argv2,argv3):
         to_write_into.writerows(history)
         #Sleep to no exceed the number of requests (3) per second
         time.sleep(period)
-        #debugginf purposes
+        #debugging purposes
         print (count)
         count = count+1
     #close memory for file    
