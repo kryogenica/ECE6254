@@ -49,6 +49,6 @@ if __name__=="__main__":
     #arguments are {iso8601 start time, iso8601 end time, granularity}
     #granularity values permitted {60, 300, 900, 3600, 21600, 86400} in seconds
     main(1514352720,1514500346,300)
-#12/15/2017 - 3pm - GTC-5 - Timestamp:1513368000 - iso8601:2017-12-15T1 5 :00:00-05:00
-#12/15/2017 - 4pm - GTC-5 - Timestamp:1513371600 - iso8601:2017-12-15T1 6 :00:00-05:00
+#12/15/2017 - 3pm - GTC-5 - Timestamp:1513368000 - iso8601:2017-12-15T15 :00:00-05:00
+#12/15/2017 - 4pm - GTC-5 - Timestamp:1513371600 - iso8601:2017-12-15T16 :00:00-05:00
 # if dates are fed in the incorrect order, this script will not get any historical data
