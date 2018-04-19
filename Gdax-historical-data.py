@@ -1,5 +1,4 @@
 #PULLING HISTORICAL GDAX DATA
-#Uses library from https://github.com/danpaquin/gdax-python
 import time
 import datetime
 import gdax
@@ -7,10 +6,10 @@ import csv
 import tzlocal
 
 def main(argv1,argv2,argv3):
-    period = 0.34 #helps with not exceeding requests per second
+    period = 0.34 #helps with sleep time for debugging
     #create a a new file where pulled data will be saved
-    file_handler = open('Historical_eth-usd_data.txt', 'w')
-    #writes a specific header in the order in which data is pulled from the web
+    file_handler = open('Historical_eth-usd_data_day_step_04142018_6pm_GTC-5_to_04142016_6pm_GTC-5.txt', 'w')
+    #writes a specific header in which data is pulled from the web
     file_handler.write("time,low,high,open,close,volume\n")
     #We throttle public endpoints by IP: 3 requests per second
     #Up to 6 requests per second in bursts
@@ -32,6 +31,8 @@ def main(argv1,argv2,argv3):
         #final time
         final = datetime.datetime.fromtimestamp(ultima).astimezone(tz)
         #https://docs.gdax.com/#get-historic-rates
+        ###
+        ###Change product_id to the crypto and its value representation to pull
         history = public_client.get_product_historic_rates(product_id='ETH-USD', start=comienzo, end=final, granularity=argv3)
         #Set file and parameter to be saved
         to_write_into = csv.writer(file_handler, delimiter=",")
@@ -39,7 +40,7 @@ def main(argv1,argv2,argv3):
         to_write_into.writerows(history)
         #Sleep to no exceed the number of requests (3) per second
         time.sleep(period)
-        #debugging purposes
+        #debugginf purposes
         print (count)
         count = count+1
     #close memory for file    
@@ -48,7 +49,8 @@ def main(argv1,argv2,argv3):
 if __name__=="__main__":
     #arguments are {iso8601 start time, iso8601 end time, granularity}
     #granularity values permitted {60, 300, 900, 3600, 21600, 86400} in seconds
-    main(1514352720,1514500346,300)
-#12/15/2017 - 3pm - GTC-5 - Timestamp:1513368000 - iso8601:2017-12-15T15 :00:00-05:00
-#12/15/2017 - 4pm - GTC-5 - Timestamp:1513371600 - iso8601:2017-12-15T16 :00:00-05:00
+    main(1460674800,1523746800,86400)
+#We get 16715 points
+#04/14/2018 - 6pm - GTC-5 - Timestamp:1523746800 - iso8601:2018-04-14T18:00:00-05:00
+#04/14/2016 - 6pm - GTC-5 - Timestamp:1460674800 - iso8601:2016-04-14T18:00:00-05:00
 # if dates are fed in the incorrect order, this script will not get any historical data
