@@ -1,0 +1,14 @@
+The data is structured in the following matter:
+Each row for any dataset here is suppose to be considerd as a 22 dimensional vector.
+
+The first dimension is the diference between the highest High and the lowest Low of the trading time steps of the following 20 dimensions.
+This dimension has been normalized to zero mean and one unit variance using all the values that fall inside the first column.
+
+The 2nd to the 21st dimension are the opening, low or high of the trading value of each time step in 20 consecutive trading time steps.
+Each one of these values has been normalized to zero mean and one unit variance using all the values from the 2nd to the 21st dimension.
+e.j. days 01/01/2017 to 01/20/2017
+
+The 22nd dimension is the value of the following time step from the previous 20 dimensions.
+Using the mean and the variance of the previous 20 days this value is normalized.
+This values is our Y in the training algorithim.
+e.j. days 01/21/2017
