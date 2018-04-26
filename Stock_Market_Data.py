@@ -7,13 +7,17 @@ import csv
 import os
 import time
 import json
-from sklearn import datasets, svm
+from sklearn import svm
+import copy
 
+#Before first time, RUN: pip install alpha_vantage
 ts = TimeSeries(key='L49GC96YCRJIYSNU', output_format='csv')
 ti = TechIndicators(key='L49GC96YCRJIYSNU', output_format='json')
 bag, names, sector, cheatsheet = [], [], [], []
 directory = os.getcwd() + "\\Market_data\\"
+frame = 5
 
+#Init
 def init():
     global cheatsheet
     if not os.path.exists(directory):
@@ -22,9 +26,10 @@ def init():
         redownloadall()
     if not os.path.exists(directory + "cheatsheets.txt"):
         redownloadall()
-    with open('cheatsheet.txt','r') as infile:
+    with open(directory + 'cheatsheet.txt','r') as infile:
         cheatsheet = json.load(infile)
     
+#redownload all stocks from API
 def redownloadall():    
 
 #-------------------------------Alpha Vantage------------------------------------
@@ -33,9 +38,9 @@ def redownloadall():
     bag.append(["NVS","FMS","PFE","JNJ","AET"])
     bag.append(["WFC","RF","DB","BBT","PNC","FITB","AXP","GS","JPM","BAC",
                 "C","STI"])
-    bag.append(["WMT","TGT","HD","LOW","JWN","KSS","GPS","SHLD","BBY","COST","DKS"])
+    bag.append(["WMT","TGT","HD","LOW","JWN","KSS","GPS","SHLD","BBY","COST","DKS", "SBUX"])
     bag.append(["F","GM","FCAU", "TM","HMC","BWA","TSLA"])
-    bag.append(["COP","HAL","XOM","BP"])
+    bag.append(["COP","HAL","XON","BP"])
 
     sector = ["TECH", "MEDICAL", "FINANCIAL", "RETAIL", "AUTOMOTIVE", "ENERGY", "MISC"]
 
@@ -44,7 +49,7 @@ def redownloadall():
     names.append(['Novartis', 'Fresanius', 'Pfizer', 'Johnson & Johnson', 'Aetna'])
     names.append(['Wells fargo', 'Regions', 'deutsch bank', 'BB&T', 'PNC', 'FifthThird', 'American Express',
                   'Goldman Sachs', 'JP Morgan Chase', 'Bank of America', 'Citigroup', 'Suntrust'])
-    names.append(['Walmart', 'target','home depot', 'lowes', 'NordStrom', 'Kohls', 'GAP', 'Sears', 'Bestbuy', 'Costco', 'dicks'])
+    names.append(['Walmart', 'target','home depot', 'lowes', 'NordStrom', 'Kohls', 'GAP', 'Sears', 'Bestbuy', 'Costco', 'dicks', 'starbucks'])
     names.append(['Ford', 'GM', 'Fiat Chrysler', 'Toyota', 'Honda', 'Borg Warner', 'Tesla'])
     names.append(['Conoco', 'Halliburton', 'Exxon', 'BP'])
 
@@ -75,6 +80,7 @@ def redownloadall():
         with open(directory + 'cheatsheet.txt','w') as outfile:
             json.dump(cheatsheet,outfile)
          
+#download stock from API
 def download(name):
         file = (directory + name + ".csv")
         try:
@@ -90,17 +96,16 @@ def download(name):
         if statinfo.st_size < 5000:
             print("\nERROR! file:",name,"is too small, error during creation")
             return
-        if name not in cheatsheet:
-            print("file added to cheatsheet")
-            cheatsheet.append({'handle' : name , 'name' : "unknown", 'sector': sector[6], 'path': file})
+        #if name not in cheatsheet:
+        #    print("file added to cheatsheet", name)
+        #    cheatsheet.append({'handle' : name , 'name' : "unknown", 'sector': sector[6], 'path': file})
         print("file: ", name, " has been created")
 
 
-
-def output(stock, start, end, window):
-    chart = [[],[]]
-#    chart[:1] = [[],[]]
-    
+#retrieve stock data from list
+def stockdata(stock, start, end):
+    chart = [[],[],[]]
+    #ATTEMPT TO FIND STOCK DATA
     cheatitem = [item for item in cheatsheet if item["handle"].lower() == stock.lower()]
     try:
         trial = pd.read_csv(cheatitem[0]['path'])
@@ -118,74 +123,62 @@ def output(stock, start, end, window):
         print("\nERROR! Could not find that stock:", stock,"! are you sure you entered the right name?")
         return
     q = 0
-    while q + window + 1 < len(trial):
-        try:
-            
-            year = trial['timestamp'][q+1][0] + trial['timestamp'][q+1][1] +trial['timestamp'][q+1][2] +trial['timestamp'][q+1][3]
-        except:
-            print("\nERROR! no stock data for selected timeframe!",start, " - ", end)
-            return
-        year = float(year)
-        if year > end:
+    while q + 1 < len(trial):  
+        # CONVERT ENDING DATE TO FLOATS         
+        year = trial['timestamp'][q+1][0] + trial['timestamp'][q+1][1] +trial['timestamp'][q+1][2] +trial['timestamp'][q+1][3]
+        month = trial['timestamp'][q+1][5] + trial['timestamp'][q+1][6]
+        day = trial['timestamp'][q+1][8] + trial['timestamp'][q+1][9]
+        year, month, day = float(year), float(month), float(day)
+        # CHECK IF WITHIN TIME WINDOW
+        if year > end[0] or (month > end[1] and year == end[0]) or (month == end[1] and year == end[0] and day > end[2]):
             q += 1
-        else:
-            secday = trial['open'][q]
-            firstday = trial['open'][q + window]
-            percentchange = (secday - firstday)/firstday
-            chart[1].append(percentchange)
-            chart[0].append(trial['timestamp'][q + window])
-            if year < start:
+        else:     
+            #COPY STOCK DATA TO LIST
+            chart[0].append(trial['timestamp'][q])
+            chart[1].append(trial['open'][q])
+            chart[2].append(trial['close'][q])
+            #chart[3].append(trial['high'][q])
+            #chart[4].append(trial['low'][q])
+            #chart[5].append(trial['volume'][q])
+            if year <= start[0] and month <= start[1] and day <= start[2]:
                 break
             else:
                 q += 1
-    #print(chart[0])
+    #CHANGE DIRECTION OF LISTS => (EARLIEST TO LATES)
+    for i in range(len(chart)):
+        chart[i] = list(reversed(chart[i]))
+    #EXIT FUNCTION
     return chart
     
     
 
-def dataset(stock, start, end, window, results):
+def indicator(stock, window, results, index):
     chart = [[],[]]
     cheatitem = [item for item in cheatsheet if item["handle"].lower() == stock.lower()]
     try:
-        #print(cheatitem[0]['path'].replace(".csv","_RSI.txt"))
-        with open(cheatitem[0]['path'].replace(".csv","_RSI.txt"),'r') as infile:
+        with open(cheatitem[0]['path'].replace(".csv","_" + index + ".txt"),'r') as infile:
             trial = json.load(infile)
-            #print(trial[0][(results[0][5])]['RSI'])
     except:
         cheatitem = [item for item in cheatsheet if item["name"].lower() == stock.lower()]
     try:
-        with open(cheatitem[0]['path'].replace(".csv","_RSI.txt"),'r') as infile:
+        with open(cheatitem[0]['path'].replace(".csv","_" + index + ".txt"),'r') as infile:
             trial = json.load(infile)
     except:
         download(stock)
         cheatitem = [item for item in cheatsheet if item["handle"].lower() == stock.lower()]
     try:
-        with open(cheatitem[0]['path'].replace(".csv","_RSI.txt"),'r') as infile:
+        with open(cheatitem[0]['path'].replace(".csv","_" + index + ".txt"),'r') as infile:
             trial = json.load(infile)
     except:
         print("\nERROR! Could not find that stock:", stock,"! are you sure you entered the right name?")
         return
     q = 0
-    #print(trial[0])
-    while q + window + 1  < len(results[0]):
-#        try:
-#            year = results[0][q+2][0] + results[0][q + 2][1] + results[0][q + 2][2] + results[0][q + 2][3]
-#        except:
-#            print("\nERROR! no stock data for selected timeframe!",start, " - ", end)
-#            return
-        #year = float(year)
-        #if year > end:
-        #    q += 1
-        #else:
-        value = trial[0][(results[0][q + 1])]['RSI']
-        #print(value)
+    while q < len(results[0]):
+        value = trial[0][(results[0][q])][index]
         chart[1].append(value)
-        chart[0].append((results[0][q + 1]))
-        #if year < start:
-        #break
-        #else:
+        chart[0].append((results[0][q]))
         q += 1
-    #print(chart[0][300])
+    
     return chart
 
 
@@ -202,80 +195,118 @@ init()
 
 
 
-def forminputs(x):
-    #x = np.array(x)
+def forminputs(a):
+    x = copy.deepcopy(a)
+    buzz = []
     for i in range(len(x[1])):
-        x[1][i] = float(x[1][i])
-    x = [x[1]]
-    x = np.transpose(x)
+        data = [float(x[1][i])]
+        for a in range(len(x)-1):
+            data.append(float(x[a+1][i]))
+        buzz.append(data)
+    x = buzz
+    
     ##Normalize the data
     Xaverage = np.mean(x, axis = 0)             ##calculate average
     Xnormal = x - Xaverage                      ##substract average
-    Xdeviation = np.std(Xnormal, axis = 0)      ##calculate standard deviation
+    Xdeviation = np.std(Xnormal, axis = 0)      ##calculate standard deviation)
     return (Xnormal / Xdeviation)
+
+def formoutputs(a):
+    y = copy.deepcopy(a)
+    y = np.ravel(np.reshape(y[1],(len(y[1]),1)))
+    y = [round(x * 100) for x in y]
+    return y
+
+def shiftleft(x,shift):
+    a = copy.deepcopy(x)
+    for i in range(len(a)):
+        del a[i][-(shift+1):-1]
+    return a
+
+def shiftright(x,shift):
+    a = copy.deepcopy(x)
+    for i in range(len(a)):
+        del a[i][:shift]
+    return a
+
+def change(x):
+    a = 0
+    rate = copy.deepcopy(x)
+    while a < len(rate) - 1:
+        rate[a] = rate[a+1] - rate[a]
+        a += 1
+    del rate[-1]
+    return rate
+
+def vol(d, f):
+    ch = [0]*f
+    dif = [0]*f
+    volatility = 0
     
-def formoutputs(y):
-    del y[1][-7 :-1]
-    y = np.abs(y[1])/y[1]
+    mean = [0]*(len(d))
+    std = [0]*(len(d))
+    for a in range(len(d)-f):
+        for i in range(f):
+            ch[i] = ((d[a+i+1]/d[a+i])-1)
+            dif[i] = ((d[a+i+1] - d[a+i])/(d[a+i]))
+        std[a] = np.std(ch, axis = 0)
+        mean[a] = np.mean(dif, axis = 0)
+    volatility = np.median(std, axis = 0)
+    result = [0]*(len(std)-frame)
+    for i in range(len(std)-frame):
+        if std[i] > volatility and mean[i] > 0:
+            result[i] = 4 #'green'
+        elif std[i] > volatility and mean[i] < 0:
+            result[i] = 3 #'red'
+        elif std[i] < volatility and mean[i] > 0:
+            result[i] = 2 #'blue'
+        else: result[i] = 1 #'magenta'
+    return result
+
+def factor(y):
     for i in range(len(y)):
-        if (y[i] != 1 and y[i] != -1):
-            y[i] = 0
+        if y[i] == 2 or y[i] == 4:
+            y[i] = 1
+        else:
+            y[i] = -1
+    return y
 
-    return np.ravel(np.reshape(y,(len(y),1)))
+data = stockdata('AMZN', [2010,4,6], [2016,4,6])
+volatility = vol(data[2],frame)
+trainX = shiftleft(data,frame)
+slope = change(trainX[1])
+slope.append(0)
+trainX.append(slope)
+x = forminputs(trainX)
+y = np.ravel(np.reshape(volatility,(len(volatility),1)))
+y = factor(y)
+
+testdata = stockdata('AMZN', [2017,1,8], [2017,6,20])
+testvol = vol(testdata[2],frame)
+testX = shiftleft(testdata,frame)
+testslope = change(testX[1])
+testslope.append(0)
+testX.append(testslope)
+tx = forminputs(testX)
+ty = np.ravel(np.reshape(testvol,(len(testvol),1)))
+ty = factor(ty)
 
 
-
-
-
-
-
-trainY = output('amd',2014,2015,5)
-trainX = dataset('amd',2014,2015,5, trainY)
-
-testY = output('amd',2016,2017,5)
-testX = dataset('amd',2016,2017,5, testY)
-
-trainX = forminputs(trainX)
-trainY = formoutputs(trainY)
-testX = forminputs(testX)
-testY = formoutputs(testY)
-
-
-for n in testY:
-        if n != 1 and n != -1:
-            print(n)    
-            n = 0
-#POLY KERNEL PROBLEM 1
-for bull in range (1, 2):
-    for b in range(-8, -4):
-        degree = bull
-        weight = np.exp(bull)
-        clf = svm.SVC(C = weight, kernel='poly', degree = bull)
-        clf.fit(trainX,trainY)
-
-#ERROR
-        Pe = 1 - clf.score(testX,testY)
-        #Pe = clf.predict(testX,testY)
-        print('Error: ', Pe)
-        print('C: ', weight)
-        print('Support Vectors: ', len(clf.support_vectors_))
-        print(' ')
-
-#RBF KERNEL PROBLEM 2
-for i in range (0, 2):
-    for b in range(-8, -4):
-        print('rbf')
-        gamma = np.exp(b)
+#SVM TRIAL AND TEST
+for i in range (-1, 0):
+    for b in range(-2, -1):
         weight = np.exp(i)
+        gamma = np.exp(b)
         clf = svm.SVC(C = weight, kernel='rbf')
-        print('prefit')
-        clf.fit(trainX,trainY)
+        clf.fit(x,y)
 #ERROR
-        print('pretest')
-        Pe = 1 - clf.score(testX,testY)
-        print('Error: ', Pe)
-        print('C: ', weight)
-        print('gamma: ', gamma)
-        print('Support Vectors: ', len(clf.support_vectors_))
-        print(' ')
-        
+        Pe = 1 - clf.score(tx,ty)
+        print("PE: ", Pe)
+        pred = clf.predict(tx)
+        for i in range(len(pred)):
+            if pred[i] > 0:
+                pred[i] = pred[i]*800
+            else: pred[i] = pred[i]*-700
+
+plt.plot(testdata[2])
+plt.plot(pred)
